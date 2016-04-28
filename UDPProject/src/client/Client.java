@@ -6,6 +6,9 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Random;
 import java.util.concurrent.*;
 
 /**
@@ -21,6 +24,9 @@ public class Client {
     private int timer = 1000;
 
     private int maximumPacketSize = 556;
+    private int seq;
+    private Integer ack;
+    private String dataToSend;
 
     public Client(int port, InetAddress ip) throws IOException {
         this.port = port;
@@ -31,17 +37,22 @@ public class Client {
     public void sendPackets(byte[] data) throws IOException {
 
         ExecutorService pool = Executors.newFixedThreadPool(window);
+        seq = new Random().nextInt(1000000000)+1;
 
         for(int i = 1; i*maximumPacketSize <= data.length; i++) {
+
+            dataToSend = seq + "," + ack + "," + new String(Arrays.copyOfRange(data, (i-1)*maximumPacketSize, i*maximumPacketSize));
             int currentTimer = timer;
-            DatagramPacket packet = new DatagramPacket(data, (i-1)*maximumPacketSize, data.length, ip, port);
-            Future future = pool.submit(new ClientThread(socket, packet, timer));
+            DatagramPacket packet = new DatagramPacket(dataToSend.getBytes(StandardCharsets.UTF_8), data.length, ip, port);
+
+            Future<Integer> future = pool.submit(new ClientThread(socket, packet, seq,ack));
 
             boolean success = false;
             while(!success) {
                 try {
-                    future.get(currentTimer, TimeUnit.MILLISECONDS);
-                    success = true;
+                    ack = future.get(currentTimer, TimeUnit.MILLISECONDS) +1;
+                    if(ack != null)
+                        success = true;
                 } catch(TimeoutException | InterruptedException | ExecutionException e) {
                     success = false;
                     currentTimer = currentTimer + timer;
@@ -50,6 +61,9 @@ public class Client {
 
             //Runnable r = new ClientThread(socket, packet, timer);
             //pool.execute(r);
+            seq++;
         }
+
+        pool.shutdown();
     }
 }
