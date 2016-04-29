@@ -58,13 +58,14 @@ public class ServerThread extends Thread {
                 receivedSeq = ConverterHelper.toInt(receivedArray[0]);
                 receivedAck = ConverterHelper.toInt(receivedArray[1]);
                 received = receivedArray[2];
+                System.out.println("");
                 System.out.println(received);
 
                 // send the response to the client at "address" and "port"
 
                 ack = receivedSeq + 1;
                 seq++;
-                buf = new String(seq + "," + ack + data).getBytes(StandardCharsets.UTF_8);
+                buf = (seq + "," + ack + ",").getBytes(StandardCharsets.UTF_8);
 
                 InetAddress address = packet.getAddress();
                 int port = packet.getPort();
@@ -74,8 +75,6 @@ public class ServerThread extends Thread {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
-            socket.close();
         }
     }
 }

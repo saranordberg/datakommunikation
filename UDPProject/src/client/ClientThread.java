@@ -10,11 +10,11 @@ import java.util.concurrent.Callable;
 /**
  * Created by Bente on 28/04/2016.
  */
-public class ClientThread implements Callable<Integer> {
+public class ClientThread implements Runnable {
     private DatagramSocket socket;
     private DatagramPacket packet;
 
-    private byte[] buf;
+    private byte[] buf = new byte[256];
 
     private boolean correctAck = true;
 
@@ -39,14 +39,14 @@ public class ClientThread implements Callable<Integer> {
 
     /**
      * Run method to send a package and wait for receipt
-     *//*
+     */
     public void run() {
 
         try {
             socket.send(packet);
 
-            while(correctAck) {
-                //Get receipt
+            while(true) {
+            	//Get receipt
                 packet = new DatagramPacket(buf, buf.length);
                 socket.receive(packet);
 
@@ -56,20 +56,18 @@ public class ClientThread implements Callable<Integer> {
                 receivedArray = received.split(",", 3);
                 receivedSeq = ConverterHelper.toInt(receivedArray[0]);
                 receivedAck = ConverterHelper.toInt(receivedArray[1]);
-
-                if(receivedAck == seq + 1)
-                    correctAck = false;
+                
+                if(receivedAck == seq + 1) {
+                    return;
+                }
             }
-
-            socket.close();
 
 
         } catch (IOException e) {
-            e.printStackTrace();
         }
 
-    }*/
-
+    }
+/*
     @Override
     public Integer call() throws Exception {
         try {
@@ -97,5 +95,5 @@ public class ClientThread implements Callable<Integer> {
         } catch (IOException e) {
             return null;
         }
-    }
+    }*/
 }

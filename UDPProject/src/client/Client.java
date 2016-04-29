@@ -1,7 +1,5 @@
 package client;
 
-import javafx.concurrent.Task;
-
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -17,21 +15,23 @@ import java.util.concurrent.*;
 public class Client {
 
     private DatagramSocket socket;
-    private int port;
-    private InetAddress ip;
+    private int serverPort;
+    private InetAddress serverIP;
+    private int clientPort;
 
     private final int window = 5;
     private int timer = 1000;
 
-    private int maximumPacketSize = 556;
-    private int seq;
-    private Integer ack;
+    private int maximumPacketSize = 200;//542; //removed 2x integers and 2 commas
+    private int seq, ack = 0;
     private String dataToSend;
+    private byte[] byteToSend;
 
-    public Client(int port, InetAddress ip) throws IOException {
-        this.port = port;
-        this.ip = ip;
-        this.socket = new DatagramSocket(port);
+    public Client(int serverPort, InetAddress ip, int clientPort) throws IOException {
+        this.serverPort = serverPort;
+        this.serverIP = ip;
+        this.clientPort = clientPort;
+        this.socket = new DatagramSocket(clientPort);
     }
 
     public void sendPackets(byte[] data) throws IOException {
@@ -39,20 +39,21 @@ public class Client {
         ExecutorService pool = Executors.newFixedThreadPool(window);
         seq = new Random().nextInt(1000000000)+1;
 
-        for(int i = 1; i*maximumPacketSize <= data.length; i++) {
+        for(int i = 1; data.length - ((i-1)* maximumPacketSize) > 0; i++) {
 
-            dataToSend = seq + "," + ack + "," + new String(Arrays.copyOfRange(data, (i-1)*maximumPacketSize, i*maximumPacketSize));
+            dataToSend = seq + "," + ack + "," + new String(Arrays.copyOfRange(data, (i-1)*maximumPacketSize, (i*maximumPacketSize > data.length) ? data.length : i*maximumPacketSize));
+
             int currentTimer = timer;
-            DatagramPacket packet = new DatagramPacket(dataToSend.getBytes(StandardCharsets.UTF_8), data.length, ip, port);
+            byteToSend = dataToSend.getBytes(StandardCharsets.UTF_8);
+            DatagramPacket packet = new DatagramPacket(byteToSend, byteToSend.length, serverIP, serverPort);
 
-            Future<Integer> future = pool.submit(new ClientThread(socket, packet, seq,ack));
+            Future future = pool.submit(new ClientThread(socket, packet, seq, ack));
 
             boolean success = false;
-            while(!success) {
+            while(!future.isDone()) {
                 try {
-                    ack = future.get(currentTimer, TimeUnit.MILLISECONDS) +1;
-                    if(ack != null)
-                        success = true;
+                    future.get(currentTimer, TimeUnit.MILLISECONDS);
+                    success = true;
                 } catch(TimeoutException | InterruptedException | ExecutionException e) {
                     success = false;
                     currentTimer = currentTimer + timer;
