@@ -12,14 +12,14 @@ public class PacketWrapper {
     private byte[] data;
     private int ack, seq;
 
-    public PacketWrapper(byte[] fullData) {
+    public PacketWrapper(byte[] fullData, int length) {
         this.fullData = fullData;
 
-        String[] received = new String(data, StandardCharsets.UTF_8).split(",", 3);
+        String[] received = new String(this.fullData, 0, length, StandardCharsets.UTF_8).split(",", 3);
 
         seq = ConverterHelper.toInt(received[0]);
         ack = ConverterHelper.toInt(received[1]);
-        data = received[0].getBytes();
+        data = received[2].getBytes();
     }
 
     public PacketWrapper(byte[] data, int seq, int ack) {

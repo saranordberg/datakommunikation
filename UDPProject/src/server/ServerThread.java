@@ -18,7 +18,6 @@ public class ServerThread extends Thread {
     protected int receivedAck = 0, receivedSeq = 0, lastSeq = 0;
     protected String received, sended;
     protected String[] receivedArray;
-    protected byte[] buf = new byte[256];
 
     public ServerThread() throws IOException {
         this("QuoteServerThread", 9198);
@@ -47,24 +46,14 @@ public class ServerThread extends Thread {
 
         while (true) {
             try {
+                byte[] buf = new byte[256];
                 // receive request
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
                 socket.receive(packet);
 
-                PacketWrapper data = new PacketWrapper(packet.getData());
+                PacketWrapper data = new PacketWrapper(packet.getData(), packet.getLength());
 
-                System.out.println(data.getData());
-
-
-                //Receive seq,ack,data from packet
-                /*byte[] data = packet.getData();
-                received = new String(data, StandardCharsets.UTF_8);
-                receivedArray = received.split(",", 3);
-                receivedSeq = ConverterHelper.toInt(receivedArray[0]);
-                receivedAck = ConverterHelper.toInt(receivedArray[1]);
-                received = receivedArray[2];
-                System.out.println("");
-                System.out.println(received);*/
+                System.out.println(new String(data.getData(), StandardCharsets.UTF_8));
 
                 sendAcknowledgement(data, packet.getAddress(), packet.getPort());
 
@@ -75,6 +64,7 @@ public class ServerThread extends Thread {
     }
 
     private void sendAcknowledgement(PacketWrapper data, InetAddress address, int port) throws IOException {
+        byte[] buf;
         ack = data.getSeq() + 1;
         seq++;
         buf = (seq + "," + ack + ",").getBytes(StandardCharsets.UTF_8);

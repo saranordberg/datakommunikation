@@ -1,5 +1,7 @@
 package client;
 
+import wrappers.PacketWrapper;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -40,22 +42,17 @@ public class Client {
         seq = new Random().nextInt(1000000000)+1;
 
         for(int i = 1; data.length - ((i-1)* maximumPacketSize) > 0; i++) {
-
-            dataToSend = seq + "," + ack + "," + new String(Arrays.copyOfRange(data, (i-1)*maximumPacketSize, (i*maximumPacketSize > data.length) ? data.length : i*maximumPacketSize));
-
             int currentTimer = timer;
-            byteToSend = dataToSend.getBytes(StandardCharsets.UTF_8);
-            DatagramPacket packet = new DatagramPacket(byteToSend, byteToSend.length, serverIP, serverPort);
+
+            PacketWrapper dataPacket = new PacketWrapper(Arrays.copyOfRange(data, (i-1)*maximumPacketSize, (i*maximumPacketSize > data.length) ? data.length : i*maximumPacketSize), seq, ack);
+            DatagramPacket packet = new DatagramPacket(dataPacket.getFullData(), dataPacket.getFullData().length, serverIP, serverPort);
 
             Future future = pool.submit(new ClientThread(socket, packet, seq, ack));
 
-            boolean success = false;
             while(!future.isDone()) {
                 try {
                     future.get(currentTimer, TimeUnit.MILLISECONDS);
-                    success = true;
                 } catch(TimeoutException | InterruptedException | ExecutionException e) {
-                    success = false;
                     currentTimer = currentTimer + timer;
                 }
             }
