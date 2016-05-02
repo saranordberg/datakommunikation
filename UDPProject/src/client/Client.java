@@ -49,11 +49,14 @@ public class Client {
 
             Future future = pool.submit(new ClientThread(socket, packet, seq, ack));
 
-            while(!future.isDone()) {
+            boolean success = false;
+            while(!success) {
                 try {
                     future.get(currentTimer, TimeUnit.MILLISECONDS);
+                    success = true;
                 } catch(TimeoutException | InterruptedException | ExecutionException e) {
                     currentTimer = currentTimer + timer;
+                    success = false;
                 }
             }
 
