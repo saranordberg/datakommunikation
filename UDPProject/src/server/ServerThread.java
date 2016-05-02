@@ -1,6 +1,7 @@
 package server;
 
 import DataTypeHelpers.ConverterHelper;
+import wrappers.PacketWrapper;
 
 import java.io.*;
 import java.net.*;
@@ -14,10 +15,10 @@ public class ServerThread extends Thread {
     protected DatagramSocket socket = null;
     protected BufferedReader in = null;
     protected int ack = 0, seq = 0;
-    protected int receivedAck = 0, receivedSeq = 0;
+    protected int receivedAck = 0, receivedSeq = 0, lastSeq = 0;
     protected String received, sended;
-    protected final String data = ",";
     protected String[] receivedArray;
+    protected byte[] buf = new byte[256];
 
     public ServerThread() throws IOException {
         this("QuoteServerThread", 9198);
@@ -45,36 +46,40 @@ public class ServerThread extends Thread {
         seq = new Random().nextInt(1000000000)+1;
 
         while (true) {
-            byte[] buf = new byte[256];
             try {
                 // receive request
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
                 socket.receive(packet);
 
+                PacketWrapper data = new PacketWrapper(packet.getData());
+
+                System.out.println(data.getData());
+
+
                 //Receive seq,ack,data from packet
-                byte[] data = packet.getData();
+                /*byte[] data = packet.getData();
                 received = new String(data, StandardCharsets.UTF_8);
                 receivedArray = received.split(",", 3);
                 receivedSeq = ConverterHelper.toInt(receivedArray[0]);
                 receivedAck = ConverterHelper.toInt(receivedArray[1]);
                 received = receivedArray[2];
                 System.out.println("");
-                System.out.println(received);
+                System.out.println(received);*/
 
-                // send the response to the client at "address" and "port"
-
-                ack = receivedSeq + 1;
-                seq++;
-                buf = (seq + "," + ack + ",").getBytes(StandardCharsets.UTF_8);
-
-                InetAddress address = packet.getAddress();
-                int port = packet.getPort();
-                packet = new DatagramPacket(buf, buf.length, address, port);
-                socket.send(packet);
+                sendAcknowledgement(data, packet.getAddress(), packet.getPort());
 
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    private void sendAcknowledgement(PacketWrapper data, InetAddress address, int port) throws IOException {
+        ack = data.getSeq() + 1;
+        seq++;
+        buf = (seq + "," + ack + ",").getBytes(StandardCharsets.UTF_8);
+
+        DatagramPacket packet = new DatagramPacket(buf, buf.length, address, port);
+        socket.send(packet);
     }
 }
